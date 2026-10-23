@@ -1,0 +1,506 @@
+-- ITS EVERYDAY BRO TROLLING GUI
+-- Classic image buttons / no music
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
+
+local parent = (gethui and gethui()) or LP:WaitForChild("PlayerGui")
+
+local old = parent:FindFirstChild("EverydayBroClassic")
+if old then old:Destroy() end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "EverydayBroClassic"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = parent
+
+local function make(class, props, holder)
+    local obj = Instance.new(class)
+    for k, v in pairs(props) do
+        obj[k] = v
+    end
+    obj.Parent = holder
+    return obj
+end
+
+local base = "https://raw.githubusercontent.com/IcantAffordSynapse/itseverydaybrotrollgui/main/assets/"
+
+local function loadAsset(filename)
+    local assetFunction = getcustomasset or getsynasset
+
+    if not (writefile and assetFunction) then
+        warn("Executor does not support custom image assets")
+        return ""
+    end
+
+    local ok, result = pcall(function()
+        local data = game:HttpGet(base .. filename)
+        local path = "EverydayBro_" .. filename
+
+        writefile(path, data)
+
+        return assetFunction(path)
+    end)
+
+    if ok then
+        return result
+    end
+
+    warn("Could not load image:", filename, result)
+    return ""
+end
+
+-- Logo only
+local logoImage = loadAsset("everydaybro1.png")
+
+-- Actual image used for every blue button
+local buttonImage = loadAsset("everydaybro3.png")
+
+local main = make("Frame", {
+    Size = UDim2.fromOffset(390, 240),
+    Position = UDim2.new(0.5, -195, 0.5, -120),
+    BackgroundColor3 = Color3.fromRGB(245, 245, 245),
+    BorderSizePixel = 0,
+    Active = true,
+    Draggable = true
+}, gui)
+
+make("UICorner", {
+    CornerRadius = UDim.new(0, 8)
+}, main)
+
+local top = make("Frame", {
+    Size = UDim2.fromOffset(390, 34),
+    BackgroundColor3 = Color3.fromRGB(150, 150, 150),
+    BorderSizePixel = 0
+}, main)
+
+make("ImageLabel", {
+    Position = UDim2.fromOffset(6, 4),
+    Size = UDim2.fromOffset(26, 26),
+    BackgroundTransparency = 1,
+    Image = logoImage,
+    ScaleType = Enum.ScaleType.Fit
+}, top)
+
+make("TextLabel", {
+    Position = UDim2.fromOffset(39, 0),
+    Size = UDim2.fromOffset(310, 34),
+    BackgroundTransparency = 1,
+    Text = "Its Everyday Bro Trolling GUI",
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextColor3 = Color3.new(1, 1, 1),
+    TextStrokeColor3 = Color3.fromRGB(50, 50, 50),
+    TextStrokeTransparency = 0.3,
+    TextSize = 18,
+    Font = Enum.Font.SourceSansBold
+}, top)
+
+local close = make("TextButton", {
+    Position = UDim2.fromOffset(358, 0),
+    Size = UDim2.fromOffset(30, 32),
+    BackgroundTransparency = 1,
+    Text = "X",
+    TextColor3 = Color3.fromRGB(230, 0, 0),
+    TextSize = 23,
+    Font = Enum.Font.SourceSansBold
+}, top)
+
+local panel = make("Frame", {
+    Position = UDim2.fromOffset(112, 37),
+    Size = UDim2.fromOffset(268, 197),
+    BackgroundColor3 = Color3.fromRGB(155, 155, 155),
+    BorderSizePixel = 0
+}, main)
+
+make("UICorner", {
+    CornerRadius = UDim.new(0, 9)
+}, panel)
+
+-- The image itself is the button.
+local function imageButton(text, holder, x, y, w, h, callback)
+    local b = make("ImageButton", {
+        Position = UDim2.fromOffset(x, y),
+        Size = UDim2.fromOffset(w, h),
+        BackgroundTransparency = buttonImage ~= "" and 1 or 0,
+        BackgroundColor3 = Color3.fromRGB(65, 120, 180),
+        BorderSizePixel = 0,
+        Image = buttonImage,
+        ScaleType = Enum.ScaleType.Stretch,
+        AutoButtonColor = true
+    }, holder)
+
+    make("TextLabel", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = Color3.new(1, 1, 1),
+        TextStrokeColor3 = Color3.fromRGB(35, 35, 35),
+        TextStrokeTransparency = 0,
+        TextSize = 18,
+        Font = Enum.Font.SourceSansBold
+    }, b)
+
+    if callback then
+        b.MouseButton1Click:Connect(callback)
+    end
+
+    return b
+end
+
+local selected = nil
+local headsitConnection = nil
+local flingConnection = nil
+local connections = {}
+
+local function track(connection)
+    table.insert(connections, connection)
+    return connection
+end
+
+local function getCharacter()
+    return LP.Character
+end
+
+local function getHumanoid()
+    local char = getCharacter()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function getRoot(char)
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getTarget()
+    if selected and selected.Parent == Players then
+        return selected.Character
+    end
+end
+
+local function stopHeadsit()
+    if headsitConnection then
+        headsitConnection:Disconnect()
+        headsitConnection = nil
+    end
+
+    local hum = getHumanoid()
+    if hum then
+        hum.Sit = false
+    end
+end
+
+local function headsit()
+    if headsitConnection then
+        stopHeadsit()
+        return
+    end
+
+    if not getTarget() then return end
+
+    headsitConnection = RunService.Heartbeat:Connect(function()
+        local char = getCharacter()
+        local target = getTarget()
+
+        if not char or not target then
+            stopHeadsit()
+            return
+        end
+
+        local head = target:FindFirstChild("Head")
+        local hum = getHumanoid()
+
+        if not head or not hum or hum.Health <= 0 then
+            stopHeadsit()
+            return
+        end
+
+        hum.Sit = true
+        char:PivotTo(head.CFrame * CFrame.new(0, 1.7, 0))
+    end)
+end
+
+track(UIS.JumpRequest:Connect(function()
+    if headsitConnection then
+        stopHeadsit()
+
+        local hum = getHumanoid()
+        if hum then
+            hum.Jump = true
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end))
+
+local function stopFling()
+    if flingConnection then
+        flingConnection:Disconnect()
+        flingConnection = nil
+    end
+
+    local root = getRoot(getCharacter())
+
+    if root then
+        root.AssemblyAngularVelocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+    end
+end
+
+-- Client-side physics attempt.
+-- Other players may not be affected by server protections.
+local function fling()
+    if flingConnection then
+        stopFling()
+        return
+    end
+
+    if selected == LP then return end
+
+    local char = getCharacter()
+    local target = getTarget()
+
+    local root = getRoot(char)
+    local targetRoot = getRoot(target)
+
+    if not root or not targetRoot then return end
+
+    stopHeadsit()
+
+    local original = root.CFrame
+    local start = os.clock()
+
+    flingConnection = RunService.Heartbeat:Connect(function()
+        if not root.Parent or not targetRoot.Parent then
+            stopFling()
+            return
+        end
+
+        local elapsed = os.clock() - start
+
+        if elapsed >= 2.5 then
+            stopFling()
+
+            if char.Parent then
+                char:PivotTo(original)
+            end
+
+            return
+        end
+
+        local angle = elapsed * 40
+
+        local offset = Vector3.new(
+            math.cos(angle) * 1.1,
+            math.sin(angle * 2) * 0.7,
+            math.sin(angle) * 1.1
+        )
+
+        char:PivotTo(
+            CFrame.new(targetRoot.Position + offset)
+        )
+
+        root.AssemblyAngularVelocity =
+            Vector3.new(0, 120, 0)
+
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 35, 0)
+    end)
+end
+
+local function clearPanel()
+    for _, child in ipairs(panel:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
+        end
+    end
+end
+
+local function showPlayers()
+    clearPanel()
+
+    local scroll = make("ScrollingFrame", {
+        Position = UDim2.fromOffset(5, 3),
+        Size = UDim2.fromOffset(258, 33),
+        BackgroundColor3 = Color3.fromRGB(235, 235, 235),
+        BorderSizePixel = 0,
+        ScrollBarThickness = 2,
+        ScrollingDirection = Enum.ScrollingDirection.X,
+        AutomaticCanvasSize = Enum.AutomaticSize.X,
+        CanvasSize = UDim2.new()
+    }, panel)
+
+    make("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        Padding = UDim.new(0, 4)
+    }, scroll)
+
+    local selectedLabel = make("TextLabel", {
+        Position = UDim2.fromOffset(5, 39),
+        Size = UDim2.fromOffset(258, 26),
+        BackgroundTransparency = 1,
+        Text = "Selected Player: " ..
+            (selected and selected.DisplayName or "No One"),
+        TextColor3 = Color3.new(1, 1, 1),
+        TextStrokeTransparency = 0.3,
+        TextSize = 17,
+        Font = Enum.Font.SourceSansBold
+    }, panel)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        local avatar = make("ImageButton", {
+            Size = UDim2.fromOffset(31, 31),
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            Image = ""
+        }, scroll)
+
+        make("UICorner", {
+            CornerRadius = UDim.new(1, 0)
+        }, avatar)
+
+        task.spawn(function()
+            local ok, image = pcall(function()
+                return Players:GetUserThumbnailAsync(
+                    player.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size100x100
+                )
+            end)
+
+            if ok and avatar.Parent then
+                avatar.Image = image
+            end
+        end)
+
+        avatar.MouseButton1Click:Connect(function()
+            selected = player
+            selectedLabel.Text =
+                "Selected Player: " .. player.DisplayName
+        end)
+    end
+
+    imageButton(
+        "Teleport to Player",
+        panel, 5, 70, 258, 27,
+        function()
+            local targetRoot = getRoot(getTarget())
+            local char = getCharacter()
+
+            if targetRoot and char then
+                char:PivotTo(
+                    targetRoot.CFrame * CFrame.new(0, 0, 3)
+                )
+            end
+        end
+    )
+
+    imageButton(
+        "Fling Player",
+        panel, 5, 101, 258, 27,
+        fling
+    )
+
+    imageButton(
+        "Headsit Player",
+        panel, 5, 132, 258, 27,
+        headsit
+    )
+end
+
+local function showHumanoid()
+    clearPanel()
+
+    local settings = {
+        {"Walkspeed", "WalkSpeed"},
+        {"Jumppower", "JumpPower"},
+        {"Hipheight", "HipHeight"}
+    }
+
+    for i, setting in ipairs(settings) do
+        local y = 5 + (i - 1) * 30
+
+        local row = make("Frame", {
+            Position = UDim2.fromOffset(5, y),
+            Size = UDim2.fromOffset(258, 27),
+            BackgroundColor3 = Color3.fromRGB(240, 240, 240),
+            BorderSizePixel = 0
+        }, panel)
+
+        make("TextLabel", {
+            Position = UDim2.fromOffset(5, 0),
+            Size = UDim2.fromOffset(120, 27),
+            BackgroundTransparency = 1,
+            Text = setting[1],
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextColor3 = Color3.new(1, 1, 1),
+            TextStrokeColor3 = Color3.fromRGB(65, 65, 65),
+            TextStrokeTransparency = 0,
+            Font = Enum.Font.SourceSansBold,
+            TextSize = 19
+        }, row)
+
+        local input = make("TextBox", {
+            Position = UDim2.fromOffset(160, 0),
+            Size = UDim2.fromOffset(95, 27),
+            BackgroundTransparency = 1,
+            Text = "",
+            PlaceholderText = "Type Here",
+            PlaceholderColor3 = Color3.fromRGB(85, 85, 85),
+            TextColor3 = Color3.fromRGB(50, 50, 50),
+            Font = Enum.Font.SourceSansBold,
+            TextSize = 18,
+            ClearTextOnFocus = false
+        }, row)
+
+        input.FocusLost:Connect(function()
+            local value = tonumber(input.Text)
+            local hum = getHumanoid()
+
+            if not value or not hum then return end
+
+            if setting[2] == "WalkSpeed" then
+                hum.WalkSpeed = math.clamp(value, 0, 500)
+
+            elseif setting[2] == "JumpPower" then
+                hum.UseJumpPower = true
+                hum.JumpPower = math.clamp(value, 0, 500)
+
+            elseif setting[2] == "HipHeight" then
+                hum.HipHeight = math.clamp(value, -10, 100)
+            end
+        end)
+    end
+end
+
+-- Both tabs now use the music-video button image.
+imageButton(
+    "Players", main,
+    4, 39, 102, 30,
+    showPlayers
+)
+
+imageButton(
+    "Humanoid", main,
+    4, 74, 102, 30,
+    showHumanoid
+)
+
+close.MouseButton1Click:Connect(function()
+    stopHeadsit()
+    stopFling()
+
+    for _, connection in ipairs(connections) do
+        connection:Disconnect()
+    end
+
+    gui:Destroy()
+end)
+
+track(LP.CharacterAdded:Connect(function()
+    stopHeadsit()
+    stopFling()
+end))
+
+showPlayers()
